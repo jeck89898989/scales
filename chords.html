@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scales Thesaurus - Chords</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="top-header">
+        <div class="top-header-content">
+            <nav class="header-nav">
+                <a href="scales.html" class="header-link">Scales</a>
+                <a href="chords.html" class="header-link">Chords</a>
+                <a href="intervals.html" class="header-link">Intervals</a>
+                <a href="data.html" class="header-link">Data</a>
+                <a href="about.html" class="header-link">About</a>
+            </nav>
+            <div class="sidebar-toggle-container">
+                <button id="sidebar-toggle" aria-expanded="false" onclick="window.location.href='index.html'">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="sr-only">Go to App</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-container">
+        <h1 class="page-title">Musical Chords</h1>
+        <p class="page-description">
+            Explore various chord types, their structures, and example spellings based on the root note C. 
+            Filter by intervals included or scales containing the chord.
+        </p>
+
+        <div class="filters-section">
+            <div class="filter-group">
+                <h2 class="filter-title">Must Include Intervals</h2>
+                <div class="filter-options" id="include-interval-filter-list">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="filter-group">
+                <h2 class="filter-title">Must Exclude Intervals</h2>
+                <div class="filter-options" id="exclude-interval-filter-list">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="filter-group">
+                <h2 class="filter-title">Filter by Scale</h2>
+                <label for="scale-filter-select">Show chords contained within:</label>
+                <select id="scale-filter-select" class="filter-select">
+                    <option value="">-- Select a Scale --</option>
+                    <!-- Populated by JavaScript -->
+                </select>
+            </div>
+            
+            <button id="clear-filters" class="clear-button">Clear Filters</button>
+        </div>
+
+        <div class="content-grid" id="chord-list">
+            <!-- Populated by JavaScript -->
+        </div>
+
+        <div class="navigation-section">
+            <a href="index.html" class="navigation-button">Go to Interactive Fretboard</a>
+        </div>
+    </div>
+
+    <script src="music-theory.js"></script>
+    <script>
+        class ChordsPage {
+            constructor() {
+                this.musicTheory = new MusicTheory();
+                this.allChordData = [];
+                this.initializeElements();
+                this.populateContent();
+                this.attachEventListeners();
+            }
+
+            initializeElements() {
+                this.chordListContainer = document.getElementById('chord-list');
+                this.includeIntervalFilterList = document.getElementById('include-interval-filter-list');
+                this.excludeIntervalFilterList = document.getElementById('exclude-interval-filter-list');
+                this.scaleFilterSelect = document.getElementById('scale-filter-select');
+                this.clearFiltersButton = document.getElementById('clear-filters');
+            }
+
+            populateContent() {
+                this.populateChordList();
+                this.populateIntervalFilters();
+                this.populateScaleFilter();
+                this.applyFilters();
+            }
+
+            populateChordList() {
+                const { chords } = this.musicTheory;
+                const sortedChords = Object.entries(chords).sort(([, a], [, b]) => a.name.localeCompare(b.name));
+
+                this.allChordData = sortedChords.map(([id, data]) => {
+                    const element = this.createChordElement(id, data);
+                    return { id, data, element };
+                });
+            }
+
+            createChordElement(id, data) {
+                const chordItem = document.createElement('div');
+                chordItem.className = 'content-item';
+                chordItem.dataset.intervals = data.intervals.join(',');
+                chordItem.dataset.chordId = id;
+
+                const exampleNotes = this.musicTheory.getChordNotes('C', id);
+
+                chordItem.innerHTML = `
+                    <div class="item-header">
+                        <h3 class="item-title">${data.name}</h3>
+                    </div>
+                    <div class="item-content">
+                        <p><strong>Formula:</strong> <span class="formula-display">${data.intervals.join(' - ')}</span></p>
+                        <p><strong>Example (C Root):</strong> <span class="formula-display">${exampleNotes.join(' - ')}</span></p>
+                    </div>
+                    <div class="item-actions">
+                        <a href="index.html?key=C&patternType=chord&pattern=${id}&action=play" class="action-button">
+                            Hear Chord
+                        </a>
+                    </div>
+                `;
+
+                return chordItem;
+            }
+
+            populateIntervalFilters() {
+                const { intervals } = this.musicTheory;
+                const sortedIntervals = Object.entries(intervals).sort(([, a], [, b]) => a.semitones - b.semitones);
+
+                this.createFilterCheckboxes(this.includeIntervalFilterList, sortedIntervals, 'include');
+                this.createFilterCheckboxes(this.excludeIntervalFilterList, sortedIntervals, 'exclude');
+            }
+
+            createFilterCheckboxes(container, intervals, prefix) {
+                intervals.forEach(([id, data]) => {
+                    const filterItem = document.createElement('div');
+                    filterItem.className = 'filter-item';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = `${prefix}-filter-${id}`;
+                    checkbox.value = id;
+
+                    const label = document.createElement('label');
+                    label.htmlFor = checkbox.id;
+                    label.textContent = data.shortName;
+
+                    filterItem.appendChild(checkbox);
+                    filterItem.appendChild(label);
+                    container.appendChild(filterItem);
+                });
+            }
+
+            populateScaleFilter() {
+                const { scales } = this.musicTheory;
+                const sortedScales = Object.entries(scales).sort(([, a], [, b]) => a.name.localeCompare(b.name));
+
+                sortedScales.forEach(([id, data]) => {
+                    const option = document.createElement('option');
+                    option.value = id;
+                    option.textContent = data.name;
+                    this.scaleFilterSelect.appendChild(option);
+                });
+            }
+
+            attachEventListeners() {
+                // Filter change listeners
+                this.includeIntervalFilterList.addEventListener('change', () => this.applyFilters());
+                this.excludeIntervalFilterList.addEventListener('change', () => this.applyFilters());
+                this.scaleFilterSelect.addEventListener('change', () => this.applyFilters());
+                this.clearFiltersButton.addEventListener('click', () => this.clearFilters());
+            }
+
+            applyFilters() {
+                const includeIntervals = this.getSelectedIntervals(this.includeIntervalFilterList);
+                const excludeIntervals = this.getSelectedIntervals(this.excludeIntervalFilterList);
+                const selectedScale = this.scaleFilterSelect.value;
+
+                const scaleIntervalsSet = selectedScale ? 
+                    new Set(this.musicTheory.scales[selectedScale]?.intervals || []) : 
+                    null;
+
+                const filteredData = this.allChordData.filter(({ data }) => {
+                    const chordIntervals = data.intervals;
+
+                    const passesInclude = includeIntervals.length === 0 || 
+                        includeIntervals.every(interval => chordIntervals.includes(interval));
+
+                    const passesExclude = excludeIntervals.length === 0 || 
+                        !excludeIntervals.some(interval => chordIntervals.includes(interval));
+
+                    const passesScale = !scaleIntervalsSet || 
+                        chordIntervals.every(interval => scaleIntervalsSet.has(interval));
+
+                    return passesInclude && passesExclude && passesScale;
+                });
+
+                this.updateDisplay(filteredData);
+            }
+
+            getSelectedIntervals(container) {
+                return Array.from(container.querySelectorAll('input[type="checkbox"]:checked'))
+                    .map(cb => cb.value);
+            }
+
+            updateDisplay(filteredData) {
+                // Sort filtered data alphabetically
+                filteredData.sort((a, b) => a.data.name.localeCompare(b.data.name));
+
+                // Clear and repopulate
+                this.chordListContainer.innerHTML = '';
+                filteredData.forEach(({ element }) => {
+                    element.classList.remove('hidden');
+                    this.chordListContainer.appendChild(element);
+                });
+
+                // Hide filtered out items
+                this.allChordData.forEach(({ element, id }) => {
+                    if (!filteredData.some(item => item.id === id)) {
+                        element.classList.add('hidden');
+                    }
+                });
+            }
+
+            clearFilters() {
+                this.includeIntervalFilterList.querySelectorAll('input[type="checkbox"]')
+                    .forEach(cb => cb.checked = false);
+                this.excludeIntervalFilterList.querySelectorAll('input[type="checkbox"]')
+                    .forEach(cb => cb.checked = false);
+                this.scaleFilterSelect.selectedIndex = 0;
+                this.applyFilters();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChordsPage();
+        });
+    </script>
+</body>
+</html>
